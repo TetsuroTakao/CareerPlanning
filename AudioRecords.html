@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音声録音システム</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; background: #fafafa; }
+        .btn { padding: 15px 30px; font-size: 16px; margin: 10px; border: none; border-radius: 5px; cursor: pointer; }
+        #recordBtn { background-color: #ff4b4b; color: white; }
+        #stopBtn { background-color: #333; color: white; }
+        #status { margin: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+    <h2>音声録音</h2>
+    <div id="status">停止中</div>
+    
+    <button id="recordBtn" class="btn">録音開始</button>
+    <button id="stopBtn" class="btn" disabled>停止・送信</button>
+
+    <script>
+        // 先ほどコピーしたGASのウェブアプリURLをここに貼り付けます
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxSI82fTuc1MYr-SitixQscpqTSLhDTK1TEizr3fHYw0tucvp6hHidgsA02rxFOC8BXTQ/exec";
+
+        let mediaRecorder;
+        let audioChunks = [];
+
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusDiv = document.getElementById('status');
+
+        // 1. マイクの権限取得と録音開始
+        recordBtn.addEventListener('click', async () => {
+            audioChunks = [];
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    statusDiv.innerText = "データを処理中・送信中...";
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
+                    
+                    // BlobをBase64文字列に変換
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64String = reader.result.split(',')[1]; // header部分を削除
+                        await sendToGAS(base64String);
+                    };
+                };
+
+                mediaRecorder.start();
+                statusDiv.innerText = "録音中...";
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+            } catch (err) {
+                alert("マイクのアクセスに失敗しました: " + err);
+                statusDiv.innerText = "エラー";
+            }
+        });
+
+        // 2. 録音停止
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            // マイクのストリームを完全に停止してクローズ
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        // 3. GASへデータをPOST送信
+        async function sendToGAS(base64Audio) {
+            const payload = {
+                audio: base64Audio,
+                fileName: "audio_" + new Date().getTime() + ".m4a"
+            };
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors", // クロスドメイン対策
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                statusDiv.innerText = "送信完了（ドライブとスプレッドシートを確認してください）";
+            } catch (error) {
+                statusDiv.innerText = "送信エラー";
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
