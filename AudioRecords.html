@@ -5,96 +5,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>音声録音システム</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; background: #fafafa; }
-        .btn { padding: 15px 30px; font-size: 16px; margin: 10px; border: none; border-radius: 5px; cursor: pointer; }
-        #recordBtn { background-color: #ff4b4b; color: white; }
-        #stopBtn { background-color: #333; color: white; }
-        #status { margin: 20px; font-weight: bold; color: #555; }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        #status-container {
+            text-align: center;
+        }
+        /* カウントダウンの数字デザイン */
+        #countdown {
+            font-size: 80px;
+            font-weight: bold;
+            color: #4a90e2;
+            margin-bottom: 20px;
+            transition: transform 0.2s ease;
+        }
+        /* 録音中アニメーション（波紋のような表現） */
+        .recording-pulse {
+            width: 120px;
+            height: 120px;
+            background-color: #ff3b30;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+            animation: pulse 1.5s infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 20px rgba(255, 59, 48, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
+            }
+        }
+        #message {
+            font-size: 20px;
+            font-weight: 500;
+        }
+        /* 停止ボタン */
+        #stop-btn {
+            margin-top: 30px;
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            display: none; /* 録音開始時に表示 */
+        }
     </style>
 </head>
 <body>
 
-    <h2>音声録音</h2>
-    <div id="status">停止中</div>
-    
-    <button id="recordBtn" class="btn">録音開始</button>
-    <button id="stopBtn" class="btn" disabled>停止・送信</button>
+<div id="status-container">
+    <div id="visual-element">
+        <div id="countdown">3</div>
+    </div>
+    <div id="message">まもなく録音を開始します...</div>
+    <button id="stop-btn">録音を停止して保存</button>
+</div>
 
-    <script>
-        // 先ほどコピーしたGASのウェブアプリURLをここに貼り付けます
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxSI82fTuc1MYr-SitixQscpqTSLhDTK1TEizr3fHYw0tucvp6hHidgsA02rxFOC8BXTQ/exec";
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+    const countdownEl = document.getElementById('countdown');
+    const visualElement = document.getElementById('visual-element');
+    const messageEl = document.getElementById('message');
+    const stopBtn = document.getElementById('stop-btn');
 
-        let mediaRecorder;
-        let audioChunks = [];
+    // ページ読み込み完了と同時にマイク権限を要求してカウントダウン開始
+    window.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // 先にマイクの許可を取得（これがないと自動録音がブラウザにブロックされるため）
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
 
-        const recordBtn = document.getElementById('recordBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const statusDiv = document.getElementById('status');
-
-        // 1. マイクの権限取得と録音開始
-        recordBtn.addEventListener('click', async () => {
-            audioChunks = [];
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    statusDiv.innerText = "データを処理中・送信中...";
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
-                    
-                    // BlobをBase64文字列に変換
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64String = reader.result.split(',')[1]; // header部分を削除
-                        await sendToGAS(base64String);
-                    };
-                };
-
-                mediaRecorder.start();
-                statusDiv.innerText = "録音中...";
-                recordBtn.disabled = true;
-                stopBtn.disabled = false;
-            } catch (err) {
-                alert("マイクのアクセスに失敗しました: " + err);
-                statusDiv.innerText = "エラー";
-            }
-        });
-
-        // 2. 録音停止
-        stopBtn.addEventListener('click', () => {
-            mediaRecorder.stop();
-            // マイクのストリームを完全に停止してクローズ
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            recordBtn.disabled = false;
-            stopBtn.disabled = true;
-        });
-
-        // 3. GASへデータをPOST送信
-        async function sendToGAS(base64Audio) {
-            const payload = {
-                audio: base64Audio,
-                fileName: "audio_" + new Date().getTime() + ".m4a"
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
             };
 
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: "POST",
-                    mode: "no-cors", // クロスドメイン対策
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                
-                statusDiv.innerText = "送信完了（ドライブとスプレッドシートを確認してください）";
-            } catch (error) {
-                statusDiv.innerText = "送信エラー";
-                console.error(error);
-            }
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                // TODO: ここにAppSheetへのデータ送信ロジック、またはダウンロード処理
+                alert("録音が完了しました。データを保存します。");
+            };
+
+            // カウントダウン処理の実行
+            runCountdown(() => {
+                startRecording();
+            });
+
+        } catch (err) {
+            console.error("マイクのアクセス拒否、または未対応ブラウザ:", err);
+            countdownEl.style.display = 'none';
+            messageEl.innerText = "エラー: マイクの利用を許可してください。";
         }
-    </script>
+    });
+
+    // カウントダウンロジック
+    function runCountdown(callback) {
+        let count = 3;
+        const interval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdownEl.innerText = count;
+            } else if (count === 0) {
+                countdownEl.innerText = "START";
+                countdownEl.style.color = "#34c759"; // 緑色に
+            } else {
+                clearInterval(interval);
+                callback(); // カウントダウン終了後に録音開始
+            }
+        }, 1000);
+    }
+
+    // 録音開始時のUI変更と処理
+    function startRecording() {
+        mediaRecorder.start();
+        
+        // UIを「録音中」のアニメーションに切り替え
+        visualElement.innerHTML = '<div class="recording-pulse">REC</div>';
+        messageEl.innerText = "録音中...";
+        messageEl.style.color = "#ff3b30";
+        
+        // 停止ボタンを表示
+        stopBtn.style.display = "inline-block";
+    }
+
+    // 停止ボタンのイベント
+    stopBtn.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            messageEl.innerText = "録音を停止しました。";
+            messageEl.style.color = "#333";
+            stopBtn.style.display = "none";
+            visualElement.innerHTML = "";
+        }
+    });
+</script>
+
 </body>
 </html>
