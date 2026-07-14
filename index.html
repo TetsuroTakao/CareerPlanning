@@ -119,7 +119,7 @@
 
                     // 2. AppSheet APIへPOST送信
                     try {
-                        const response = await fetch("https://api.appsheet.com/api/v2/apps/${appId}/tables/AudioRecords/Action", {
+                        const response = await fetch("https://api.appsheet.com/api/v2/apps/${appId}/tables/${tableName}/Action", {
                             method: "POST",
                             headers: {
                                 "ApplicationAccessKey": apiKey,
