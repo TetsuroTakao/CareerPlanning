@@ -84,8 +84,22 @@
     <div id="message">まもなく録音を開始します...</div>
     <button id="stop-btn">録音を停止して保存</button>
 </div>
+<!-- 文字起こし結果の表示エリア（初期状態は非表示） -->
+<div id="result-container" style="display: none; margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
+    <h3>🎙️ 文字起こし結果</h3>
+    <p><strong>ファイル名:</strong> <span id="res-filename">-</span></p>
+    <p><strong>録音時間:</strong> <span id="res-duration">-</span></p>
+    <p><strong>文字数:</strong> <span id="res-length">0</span> 文字</p>
+    <div id="res-text-box" style="margin: 10px 0; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.5;">
+        ここに結果が表示されます...
+    </div>
+    <p><a id="res-file-link" href="#" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">📁 録音ファイルをダウンロード</a></p>
+</div>
 
 <script>
+    // 録音時間を計測するための変数（グローバルまたは録音開始処理の中に配置）
+    let startTime;
+    let durationText = "0秒";
     let mediaRecorder;
     let audioChunks = [];
     const countdownEl = document.getElementById('countdown');
@@ -93,6 +107,91 @@
     const messageEl = document.getElementById('message');
     const stopBtn = document.getElementById('stop-btn');
 
+    // 録音開始時に時間を記録する
+    function startTimer() {
+        startTime = Date.now();
+    }
+    // 録音停止時に時間を計算する
+    function stopTimer() {
+        const durationMs = Date.now() - startTime;
+        const seconds = Math.floor(durationMs / 1000);
+        if (seconds < 60) {
+            durationText = `${seconds}秒`;
+        } else {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            durationText = `${minutes}分${remainingSeconds}秒`;
+        }
+    }
+    // AppSheetのレコードをポーリングして文字起こし結果を監視する関数
+    async function pollForTranscription(recordId, fileName) {
+        const appId = "4685a6dd-5910-4de7-a436-024d5a82245c"; 
+        const apiKey = "V2-ksToy-jx4wi-NkFlf-ZpAOj-sPzWh-pRPz4-indeA-sGcV6";
+        const tableName = "AudioRecords";
+        
+        const messageEl = document.getElementById("message");
+        messageEl.innerText = "音声送信完了。文字起こし処理を待っています...";
+
+        // 5秒おきに最大24回（計2分間）確認する
+        const maxAttempts = 24;
+        const intervalMs = 5000;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                // AppSheetから特定のレコードを取得するためのFindリクエスト
+                const response = await fetch(`https://api.appsheet.com/api/v2/apps/${appId}/tables/${tableName}/Action`, {
+                    method: "POST",
+                    headers: {
+                        "ApplicationAccessKey": apiKey,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "Action": "Find",
+                        "Properties": { "Locale": "ja-JP", "Timezone": "Tokyo Standard Time" },
+                        "Rows": [{ "ID": recordId }]
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        const record = data[0];
+                        
+                        // 「文字おこし結果」カラム（AppSheet側の実際の列名に合わせてください）
+                        const text = record["文字おこし結果"]; 
+                        
+                        // 文字起こしテキストが更新されたか、ステータスが完了になった場合
+                        if (text && text.trim() !== "" && text !== "処理中") {
+                            // 画面に反映
+                            document.getElementById("res-filename").innerText = fileName;
+                            document.getElementById("res-duration").innerText = durationText;
+                            document.getElementById("res-length").innerText = text.length;
+                            document.getElementById("res-text-box").innerText = text.substring(0, 1000); // 1000文字制限
+                            
+                            // ファイルリンクの設定（AppSheetのファイル保存先URL構造に合わせる）
+                            // ※通常はGoogleドライブの共有リンクにするか、AppSheetの画像・ファイルダウンロードURLを指定
+                            const fileLink = document.getElementById("res-file-link");
+                            fileLink.href = `https://www.appsheet.com/template/gettablefileurl?appName=${appId}&tableName=${tableName}&fileName=${record["音声ファイル"]}`;
+
+                            // コンテナを表示
+                            document.getElementById("result-container").style.display = "block";
+                            messageEl.innerText = "文字起こしが完了しました！";
+                            return; // 終了
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("ポーリングエラー:", error);
+            }
+            
+            // 次の確認まで待機
+            await new Promise(resolve => setTimeout(resolve, intervalMs));
+            messageEl.innerText = `文字起こしを待っています... (${attempt * 5}秒経過)`;
+        }
+
+        messageEl.innerText = "時間切れ：文字起こしの確認をタイムアウトしました。AppSheet側で直接確認してください。";
+    }
     // ページ読み込み完了と同時にマイク権限を要求してカウントダウン開始
     window.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -117,6 +216,7 @@
                     const apiKey = "V2-ksToy-jx4wi-NkFlf-ZpAOj-sPzWh-pRPz4-indeA-sGcV6";
                     const tableName = "AudioRecords"; // ※スプレッドシートのタブ名（AppSheet上のテーブル名）
                     const requestUrl = "https://api.appsheet.com/api/v2/apps/" + appId + "/tables/" + tableName + "/Action";
+                    const recordingFile = "recording_" + Date.now() + ".wav, " + base64Audio;
 
                     // 2. AppSheet APIへPOST送信
                     try {
@@ -133,7 +233,7 @@
                                     {
                                         "ID": crypto.randomUUID(), 
                                         "タイトル": "自動録音テスト", 
-                                        "音声ファイル": "recording_" + Date.now() + ".wav, " + base64Audio,
+                                        "音声ファイル": recordingFile,
                                         "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
                                     }
                                 ]
@@ -141,6 +241,12 @@
                         });
                         const result = await response.json();
                         alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
+                        // fetchが成功したブロックの中
+                        if (response.ok) {
+                            alert("送信に成功しました！文字起こしを開始します。");
+                            // ポーリング処理を開始
+                            pollForTranscription(currentRecordId, `audio_${Date.now()}.wav`);
+                        }
                     } catch (error) {
                         console.error("AppSheetへの送信エラー:", error);
                     } finally {
