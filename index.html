@@ -104,10 +104,44 @@
                 audioChunks.push(event.data);
             };
 
-            mediaRecorder.onstop = () => {
+            mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                // TODO: ここにAppSheetへのデータ送信ロジック、またはダウンロード処理
-                alert("録音が完了しました。データを保存します。");
+                
+                // 1. BlobをBase64文字列に変換する
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result.split(',')[1]; // ヘッダーを除いた純粋なデータ
+
+                    // 2. AppSheet APIへPOST送信
+                    try {
+                        const response = await fetch("https://api.appsheet.com/api/v2/apps/{YOUR_APP_ID}/tables/AudioRecords/Action", {
+                            method: "POST",
+                            headers: {
+                                "ApplicationAccessKey": "YOUR_APPSHEET_API_KEY",
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                "Action": "Add",
+                                "Properties": { "Locale": "ja-JP" },
+                                "Rows": [
+                                    {
+                                        "RecordID": crypto.randomUUID(), // 一意のID
+                                        "UserEmail": "ユーザーの特定ロジック", 
+                                        "Timestamp": new Date().toISOString(),
+                                        "Audio": base64Audio // AppSheet側でFile/Audio型列が受取可能か要検証
+                                    }
+                                ]
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            alert("録音データを送信しました！");
+                        }
+                    } catch (error) {
+                        console.error("AppSheetへの送信エラー:", error);
+                    }
+                };
             };
 
             // カウントダウン処理の実行
