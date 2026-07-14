@@ -132,18 +132,19 @@
                                     {
                                         "ID": crypto.randomUUID(), 
                                         "タイトル": "自動録音テスト", 
-                                        "音声ファイル": base64Audio,
+                                        "音声ファイル": "recording_" + Date.now() + ".wav, " + base64Audio,
                                         "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
                                     }
                                 ]
                             })
                         });
-                        
-                        if (response.ok) {
-                            alert("録音データを送信しました！");
-                        }
+                        const result = await response.json();
+                        alert("送信結果(" + response.ok + "): " + JSON.stringify(result));
                     } catch (error) {
                         console.error("AppSheetへの送信エラー:", error);
+                    } finally {
+                        // 【重要】次の録音のためにバッファを完全に空にする！
+                        audioChunks = []; 
                     }
                 };
             };
