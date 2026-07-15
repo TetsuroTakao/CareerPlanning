@@ -304,17 +304,19 @@
                         }
                     };
                 };
+                // 画面の切り替え
+                document.getElementById("setup-container").style.display = "none";
+                document.getElementById("status-container").style.display = "block";
+                // カウントダウンと録音開始へ
+                initiateCountdownAndRecord();
             } catch (err) {
                 alert("マイクの初期化に失敗しました: " + err.message);
                 console.error("マイクのアクセス拒否、または未対応ブラウザ:", err);
-                countdownEl.style.display = 'none';
-                messageEl.innerText = "エラー: マイクの利用を許可してください。";
+                const countdownEl = document.getElementById("countdown");
+                const messageEl = document.getElementById("message");
+                if (countdownEl) countdownEl.style.display = 'none';
+                if (messageEl) messageEl.innerText = "エラー: マイクの利用を許可してください。";
             }
-            // 画面の切り替え
-            document.getElementById("setup-container").style.display = "none";
-            document.getElementById("status-container").style.display = "block";
-            // カウントダウンと録音開始へ
-            initiateCountdownAndRecord();
         });
     });
     function startRecording() {
