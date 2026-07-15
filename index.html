@@ -213,122 +213,50 @@
         const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
         return `CAND-${yyyy}${mm}${dd}-${randomChars}`;
     }
-    // ページ読み込み完了と同時にマイク権限を要求してカウントダウン開始
     window.addEventListener('DOMContentLoaded', () => {
         const startBtn = document.getElementById("start-btn");
-        startBtn.addEventListener("click", () => {
-            const stream = navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+        
+        // 開始ボタンが押された時の処理
+        startBtn.addEventListener("click", async () => { // asyncを追加
             const emailInput = document.getElementById("candidate-email");
             const email = emailInput.value.trim();
             
-            // 簡単なバリデーション
             if (!email || !email.includes("@")) {
                 alert("有効な候補者のメールアドレスを入力してください。");
                 return;
             }
             
-            // 入力フォームを非表示にし、録音画面を表示する
-            document.getElementById("setup-container").style.display = "none";
-            document.getElementById("status-container").style.display = "block";
-            
-            // ここからカウントダウンとマイクの初期化・録音開始をトリガーする
-            initiateCountdownAndRecord();
-        });
-        try {
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
-            mediaRecorder.onstop = async () => {
-                stopTimer();
-                // フォームからメールアドレスを取得
-                const emailInput = document.getElementById("candidate-email");
-                const candidateEmail = emailInput.value.trim();
+            try {
+                // 1. マイクのストリームを非同期で取得 (awaitが必要)
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 
-                if (!candidateEmail) {
-                    alert("エラー: 候補者のメールアドレスを入力してから録音を終了してください。");
-                    return;
-                }
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = async () => {
-                    const base64AudioWithPrefix = reader.result;
-                    const appId = "4685a6dd-5910-4de7-a436-024d5a82245c";
-                    const apiKey = "V2-ksToy-jx4wi-NkFlf-ZpAOj-sPzWh-pRPz4-indeA-sGcV6";
-                    const tableName = "AudioRecords"; // ※スプレッドシートのタブ名（AppSheet上のテーブル名）
-                    const currentRecordId = crypto.randomUUID();
-                    const fileName = `audio_${Date.now()}.wav`;
-                    const candidateId = generateCandidateId();
-                    const fileDataForAppSheet = `${fileName},${base64AudioWithPrefix}`;
-                    const requestUrl = "https://api.appsheet.com/api/v2/apps/" + appId + "/tables/" + tableName + "/Action";
-                    try {
-                        const response = await fetch(requestUrl, {
-                            method: "POST",
-                            headers: {
-                                "ApplicationAccessKey": apiKey,
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                                "Action": "Add",
-                                "Properties": { "Locale": "ja-JP", "Timezone": "Tokyo Standard Time" },
-                                "Rows": [
-                                    {
-                                        "ID": currentRecordId, 
-                                        "タイトル": `面談録音_${candidateId}`, 
-                                        "音声ファイル": fileDataForAppSheet,
-                                        "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
-                                        "インタビュー対象者ID": candidateId,
-                                        "対象者メールアドレス": candidateEmail, 
-                                        "ステータス": "選考中",
-                                        "インタビュアー一覧": "tetsuro.takao@processtune.com, interviewer2@example.com",
-                                        "関係者一覧": "",
-                                    }
-                                ]
-                            })
-                        });
-                        // for debug ##TODO delete
-                        const result = await response.json();
-                        alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
-                        // end ##TODO delete
-                        if (response.ok) {
-                            alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
-                            document.getElementById("res-candidate-id").innerText = candidateId;
-                            document.getElementById("res-candidate-email").innerText = candidateEmail;
-                            pollForTranscription(currentRecordId, fileName);
-                        }
-                    } catch (error) {
-                        console.error("AppSheetへの送信エラー:", error);
-                    } finally {
-                        // 【重要】次の録音のためにバッファを完全に空にする！
-                        audioChunks = []; 
+                // 2. インスタンスを生成
+                mediaRecorder = new MediaRecorder(stream);
+                
+                // 3. 【重要】生成直後にイベントハンドラを紐づける
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
                     }
                 };
-            };
-        } catch (err) {
-            alert("マイクのアクセス拒否、または未対応ブラウザ:", err);
-            console.error("マイクのアクセス拒否、または未対応ブラウザ:", err);
-            countdownEl.style.display = 'none';
-            messageEl.innerText = "エラー: マイクの利用を許可してください。";
-        }
+                
+                mediaRecorder.onstop = async () => {
+                    // 送信処理（前述の長いロジック）をここに記述
+                    // ...
+                };
+                
+                // 画面の切り替え
+                document.getElementById("setup-container").style.display = "none";
+                document.getElementById("status-container").style.display = "block";
+                
+                // カウントダウンと録音開始へ
+                initiateCountdownAndRecord();
+                
+            } catch (err) {
+                alert("マイクの初期化に失敗しました: " + err.message);
+            }
+        });
     });
-    // カウントダウンロジック
-    // function runCountdown(callback) {
-    //     let count = 3;
-    //     const interval = setInterval(() => {
-    //         count--;
-    //         if (count > 0) {
-    //             countdownEl.innerText = count;
-    //         } else if (count === 0) {
-    //             countdownEl.innerText = "START";
-    //             countdownEl.style.color = "#34c759"; // 緑色に
-    //         } else {
-    //             clearInterval(interval);
-    //             callback(); // カウントダウン終了後に録音開始
-    //         }
-    //     }, 1000);
-    // }
-    // 録音開始時のUI変更と処理
     function startRecording() {
         startTimer();
         mediaRecorder.start();
