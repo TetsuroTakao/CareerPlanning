@@ -118,7 +118,6 @@
     const visualElement = document.getElementById('visual-element');
     const messageEl = document.getElementById('message');
     const stopBtn = document.getElementById('stop-btn');
-
     // 録音開始時に時間を記録する
     function startTimer() {
         startTime = Date.now();
@@ -226,19 +225,13 @@
             }
             
             try {
-                // 1. マイクのストリームを非同期で取得 (awaitが必要)
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // 2. インスタンスを生成
                 mediaRecorder = new MediaRecorder(stream);
-                
-                // 3. 【重要】生成直後にイベントハンドラを紐づける
                 mediaRecorder.ondataavailable = event => {
                     if (event.data.size > 0) {
                         audioChunks.push(event.data);
                     }
                 };
-                
                 mediaRecorder.onstop = async () => {
                     stopTimer();
                     // フォームからメールアドレスを取得
@@ -280,7 +273,7 @@
                                             "インタビュー対象者ID": candidateId,
                                             "対象者メールアドレス": candidateEmail, 
                                             "ステータス": "選考中",
-                                            "インタビュアー一覧": "tetsuro.takao@processtune.com, interviewer2@example.com",
+                                            "インタビュアーメールアドレス一覧": "tetsuro.takao@processtune.com, interviewer2@example.com",
                                             "関係者一覧": "",
                                         }
                                     ]
