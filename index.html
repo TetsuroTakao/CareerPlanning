@@ -313,27 +313,28 @@
             //     startRecording();
             // });
         } catch (err) {
+            alert("マイクのアクセス拒否、または未対応ブラウザ:", err);
             console.error("マイクのアクセス拒否、または未対応ブラウザ:", err);
             countdownEl.style.display = 'none';
             messageEl.innerText = "エラー: マイクの利用を許可してください。";
         }
     });
     // カウントダウンロジック
-    function runCountdown(callback) {
-        let count = 3;
-        const interval = setInterval(() => {
-            count--;
-            if (count > 0) {
-                countdownEl.innerText = count;
-            } else if (count === 0) {
-                countdownEl.innerText = "START";
-                countdownEl.style.color = "#34c759"; // 緑色に
-            } else {
-                clearInterval(interval);
-                callback(); // カウントダウン終了後に録音開始
-            }
-        }, 1000);
-    }
+    // function runCountdown(callback) {
+    //     let count = 3;
+    //     const interval = setInterval(() => {
+    //         count--;
+    //         if (count > 0) {
+    //             countdownEl.innerText = count;
+    //         } else if (count === 0) {
+    //             countdownEl.innerText = "START";
+    //             countdownEl.style.color = "#34c759"; // 緑色に
+    //         } else {
+    //             clearInterval(interval);
+    //             callback(); // カウントダウン終了後に録音開始
+    //         }
+    //     }, 1000);
+    // }
     // 録音開始時のUI変更と処理
     function startRecording() {
         startTimer();
@@ -373,7 +374,6 @@
                 clearInterval(interval);
                 countdownEl.style.display = "none";
                 messageEl.innerText = "🔴 録音中...";
-                
                 // 録音開始の実装関数を呼ぶ
                 startRecording(); 
             }
