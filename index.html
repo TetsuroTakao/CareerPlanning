@@ -77,6 +77,13 @@
 </head>
 <body>
 
+<div id="setup-container" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+    <h3 style="margin-top: 0;">📋 インタビュー対象者情報</h3>
+    <div style="margin-bottom: 10px;">
+        <label for="candidate-email" style="display: block; font-weight: bold; margin-bottom: 5px;">候補者メールアドレス（連絡先）:</label>
+        <input type="email" id="candidate-email" placeholder="example@gmail.com" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;" required>
+    </div>
+</div>
 <div id="status-container">
     <div id="visual-element">
         <div id="countdown">3</div>
@@ -84,9 +91,11 @@
     <div id="message">まもなく録音を開始します...</div>
     <button id="stop-btn">録音を停止して保存</button>
 </div>
-<!-- 文字起こし結果の表示エリア（初期状態は非表示） -->
+<!-- 文字起こし結果の表示エリア（前回提示したものと同じ） -->
 <div id="result-container" style="display: none; margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
     <h3>🎙️ 文字起こし結果</h3>
+    <p><strong>インタビュー対象者ID:</strong> <span id="res-candidate-id" style="font-family: monospace; font-weight: bold;">-</span></p>
+    <p><strong>対象者メールアドレス:</strong> <span id="res-candidate-email">-</span></p>
     <p><strong>ファイル名:</strong> <span id="res-filename">-</span></p>
     <p><strong>録音時間:</strong> <span id="res-duration">-</span></p>
     <p><strong>文字数:</strong> <span id="res-length">0</span> 文字</p>
@@ -192,6 +201,19 @@
 
         messageEl.innerText = "時間切れ：文字起こしの確認をタイムアウトしました。AppSheet側で直接確認してください。";
     }
+    // 【追加】一意の「インタビュー対象者ID」を生成する関数
+    function generateCandidateId() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        
+        // 4桁のランダムな英数字を生成
+        const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+        
+        // 例: CAND-20260715-A3F9
+        return `CAND-${yyyy}${mm}${dd}-${randomChars}`;
+    }
     // ページ読み込み完了と同時にマイク権限を要求してカウントダウン開始
     window.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -204,21 +226,28 @@
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                stopTimer();
+                // フォームからメールアドレスを取得
+                const emailInput = document.getElementById("candidate-email");
+                const candidateEmail = emailInput.value.trim();
                 
-                // 1. BlobをBase64文字列に変換する
+                if (!candidateEmail) {
+                    alert("エラー: 候補者のメールアドレスを入力してから録音を終了してください。");
+                    return;
+                }
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = async () => {
-                    const base64Audio = reader.result.split(',')[1]; // ヘッダーを除いた純粋なデータ
-                    // 2. AppSheet APIへPOST送信
+                    const base64AudioWithPrefix = reader.result;
                     const appId = "4685a6dd-5910-4de7-a436-024d5a82245c";
                     const apiKey = "V2-ksToy-jx4wi-NkFlf-ZpAOj-sPzWh-pRPz4-indeA-sGcV6";
                     const tableName = "AudioRecords"; // ※スプレッドシートのタブ名（AppSheet上のテーブル名）
+                    const currentRecordId = crypto.randomUUID();
+                    const fileName = `audio_${Date.now()}.wav`;
+                    const candidateId = generateCandidateId();
+                    const fileDataForAppSheet = `${fileName},${base64AudioWithPrefix}`;
                     const requestUrl = "https://api.appsheet.com/api/v2/apps/" + appId + "/tables/" + tableName + "/Action";
-                    const recordingFile = "recording_" + Date.now() + ".wav, " + base64Audio;
-
-                    // 2. AppSheet APIへPOST送信
                     try {
                         const response = await fetch(requestUrl, {
                             method: "POST",
@@ -231,21 +260,28 @@
                                 "Properties": { "Locale": "ja-JP", "Timezone": "Tokyo Standard Time" },
                                 "Rows": [
                                     {
-                                        "ID": crypto.randomUUID(), 
-                                        "タイトル": "自動録音テスト", 
-                                        "音声ファイル": recordingFile,
-                                        "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+                                        "ID": currentRecordId, 
+                                        "タイトル": `面談録音_${candidateId}`, 
+                                        "音声ファイル": fileDataForAppSheet,
+                                        "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
+                                        "インタビュー対象者ID": candidateId,
+                                        "対象者メールアドレス": candidateEmail, 
+                                        "ステータス": "選考中",
+                                        "インタビュアー一覧": "tetsuro.takao@processtune.com, interviewer2@example.com",
+                                        "関係者一覧": "",
                                     }
                                 ]
                             })
                         });
+                        // for debug ##TODO delete
                         const result = await response.json();
                         alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
-                        // fetchが成功したブロックの中
+                        // end ##TODO delete
                         if (response.ok) {
-                            alert("送信に成功しました！文字起こしを開始します。");
-                            // ポーリング処理を開始
-                            pollForTranscription(currentRecordId, `audio_${Date.now()}.wav`);
+                            alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
+                            document.getElementById("res-candidate-id").innerText = candidateId;
+                            document.getElementById("res-candidate-email").innerText = candidateEmail;
+                            pollForTranscription(currentRecordId, fileName);
                         }
                     } catch (error) {
                         console.error("AppSheetへの送信エラー:", error);
