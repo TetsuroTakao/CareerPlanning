@@ -217,6 +217,8 @@
     window.addEventListener('DOMContentLoaded', () => {
         const startBtn = document.getElementById("start-btn");
         startBtn.addEventListener("click", () => {
+            const stream = navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
             const emailInput = document.getElementById("candidate-email");
             const email = emailInput.value.trim();
             
@@ -234,14 +236,9 @@
             initiateCountdownAndRecord();
         });
         try {
-            // 先にマイクの許可を取得（これがないと自動録音がブラウザにブロックされるため）
-            const stream = navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-
             mediaRecorder.ondataavailable = event => {
                 audioChunks.push(event.data);
             };
-
             mediaRecorder.onstop = async () => {
                 stopTimer();
                 // フォームからメールアドレスを取得
@@ -308,10 +305,6 @@
                     }
                 };
             };
-            // カウントダウン処理の実行
-            // runCountdown(() => {
-            //     startRecording();
-            // });
         } catch (err) {
             alert("マイクのアクセス拒否、または未対応ブラウザ:", err);
             console.error("マイクのアクセス拒否、または未対応ブラウザ:", err);
