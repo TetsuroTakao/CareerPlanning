@@ -290,7 +290,7 @@
                             // alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
                             // end ##TODO delete
                             if (response.ok) {
-                                alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
+                                alert("シートの更新に成功しました！ドライブへの保存と文字起こしを開始します。");
                                 messageEl.innerText = "音声ファイルを送信中...";
                                 messageEl.style.color = "#0078d4"; // 処理中っぽい青色などに
                                 const gasUrl = "https://script.google.com/macros/s/AKfycbwZ89epDVn0UdJABmkZ-Bj09KpSUwGacz0KnvTAW-WSKNaaAVvZ2Lt0jyKGy9NjGNmdfA/exec";
@@ -316,7 +316,7 @@
                                     });
                                     if (gasResponse.ok) {
                                         console.log("GAS側での保存に成功");
-                                        messageEl.innerText = "ファイルを保存しました！文字起こしを開始します...";
+                                        messageEl.innerText = "ドライブへファイルを保存しました！文字起こしを開始します...";
                                         document.getElementById("res-candidate-id").innerText = candidateId;
                                         document.getElementById("res-candidate-email").innerText = candidateEmail;
                                         pollForTranscription(currentRecordId, fileName);
@@ -326,7 +326,7 @@
                                         console.error("gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result));
                                         // end ##TODO delete
                                         console.error("GASサーバー側でエラーが発生しました");
-                                        messageEl.innerText = "ファイルの保存に失敗しました。" + "gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result);
+                                        messageEl.innerText = "ドライブのファイルの保存に失敗しました。" + "gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result);
                                     }
                                 } catch (error) {
                                     console.error("GASへの送信エラー:", error);
