@@ -293,10 +293,11 @@
                                 alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
                                 messageEl.innerText = "音声ファイルを送信中...";
                                 messageEl.style.color = "#0078d4"; // 処理中っぽい青色などに
-                                const gasUrl = "https://script.google.com/macros/s/AKfycbwN-iEoXnYy2MZAoXIdZmDZa6P7wepBYYa4iMwyMIrNiux5U4f4o08f9dNrjPkIJOMY8Q/exec";
+                                const gasUrl = "https://script.google.com/macros/s/AKfycbwZ89epDVn0UdJABmkZ-Bj09KpSUwGacz0KnvTAW-WSKNaaAVvZ2Lt0jyKGy9NjGNmdfA/exec";
                                 try {
                                     const gasResponse = await fetch(gasUrl, {
                                         method: "POST",
+                                        mode: "no-cors",
                                         headers: {
                                             "Content-Type": "text/plain" // CORSエラーを回避しやすいようにプレーンテキストで送信
                                         },
@@ -309,22 +310,22 @@
                                     if (gasResponse.ok) {
                                         console.log("GAS側での保存に成功");
                                         messageEl.innerText = "ファイルを保存しました！文字起こしを開始します...";
+                                        document.getElementById("res-candidate-id").innerText = candidateId;
+                                        document.getElementById("res-candidate-email").innerText = candidateEmail;
+                                        pollForTranscription(currentRecordId, fileName);
                                     } else {
                                         console.error("GASサーバー側でエラーが発生しました");
                                         messageEl.innerText = "ファイルの保存に失敗しました。";
                                     }
                                 } catch (error) {
                                     console.error("GASへの送信エラー:", error);
-                                    messageEl.innerText = "通信エラーが発生しました。";
+                                    messageEl.innerText = "GASへの通信エラーが発生しました。";
                                 }
-                                document.getElementById("res-candidate-id").innerText = candidateId;
-                                document.getElementById("res-candidate-email").innerText = candidateEmail;
-                                pollForTranscription(currentRecordId, fileName);
                             }
                         } catch (error) {
                             console.error("AppSheetへの送信エラー:", error);
+                            messageEl.innerText = "AppSheetへの通信エラーが発生しました。";
                         } finally {
-                            // 【重要】次の録音のためにバッファを完全に空にする！
                             audioChunks = []; 
                         }
                     };
