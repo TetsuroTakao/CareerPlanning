@@ -322,8 +322,8 @@
                                         pollForTranscription(currentRecordId, fileName);
                                     } else {
                                         // for debug ##TODO delete
-                                        const result = await response.json();
-                                        console.error("gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result));
+                                        // const result = await response.json();
+                                        // console.error("gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result));
                                         // end ##TODO delete
                                         console.error("GASサーバー側でエラーが発生しました");
                                         messageEl.innerText = "ファイルの保存に失敗しました。";
