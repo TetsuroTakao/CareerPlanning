@@ -207,11 +207,7 @@
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
-        
-        // 4桁のランダムな英数字を生成
         const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
-        
-        // 例: CAND-20260715-A3F9
         return `CAND-${yyyy}${mm}${dd}-${randomChars}`;
     }
     // ページ読み込み完了と同時にマイク権限を要求してカウントダウン開始
@@ -291,7 +287,6 @@
                     }
                 };
             };
-
             // カウントダウン処理の実行
             runCountdown(() => {
                 startRecording();
@@ -303,7 +298,6 @@
             messageEl.innerText = "エラー: マイクの利用を許可してください。";
         }
     });
-
     // カウントダウンロジック
     function runCountdown(callback) {
         let count = 3;
@@ -320,7 +314,6 @@
             }
         }, 1000);
     }
-
     // 録音開始時のUI変更と処理
     function startRecording() {
         mediaRecorder.start();
@@ -333,7 +326,6 @@
         // 停止ボタンを表示
         stopBtn.style.display = "inline-block";
     }
-
     // 停止ボタンのイベント
     stopBtn.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
