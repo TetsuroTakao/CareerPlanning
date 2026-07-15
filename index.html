@@ -192,6 +192,11 @@
                         }
                     }
                 }
+                else
+                {
+                    const result = await response.json();
+                    alert("文字おこし結果(" + response.ok + "): " + JSON.stringify(result));
+                }
             } catch (error) {
                 console.error("ポーリングエラー:", error);
             }
@@ -281,11 +286,19 @@
                                 })
                             });
                             // for debug ##TODO delete
-                            const result = await response.json();
-                            alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
+                            // const result = await response.json();
+                            // alert(requestUrl + "送信結果(" + response.ok + "): " + JSON.stringify(result));
                             // end ##TODO delete
                             if (response.ok) {
                                 alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
+                                google.script.run
+                                    .withSuccessHandler(function(result) {
+                                        console.log("GAS側での保存に成功:", result);
+                                    })
+                                    .withFailureHandler(function(error) {
+                                        console.error("GAS側での保存に失敗:", error);
+                                    })
+                                    .saveAudio(base64DataOnly, fileName);
                                 document.getElementById("res-candidate-id").innerText = candidateId;
                                 document.getElementById("res-candidate-email").innerText = candidateEmail;
                                 pollForTranscription(currentRecordId, fileName);
