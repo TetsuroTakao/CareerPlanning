@@ -291,14 +291,32 @@
                             // end ##TODO delete
                             if (response.ok) {
                                 alert("送信に成功しました！ドライブへの保存と文字起こしを開始します。");
-                                google.script.run
-                                    .withSuccessHandler(function(result) {
-                                        console.log("GAS側での保存に成功:", result);
-                                    })
-                                    .withFailureHandler(function(error) {
-                                        console.error("GAS側での保存に失敗:", error);
-                                    })
-                                    .saveAudio(base64DataOnly, fileName);
+                                messageEl.innerText = "音声ファイルを送信中...";
+                                messageEl.style.color = "#0078d4"; // 処理中っぽい青色などに
+                                const gasUrl = "https://script.google.com/macros/s/AKfycbxdnvx1gbvAcH2WaHfKhpBq58jRybTdJ1uY8z5RubqtLRMWnt6KgNTIgK9qMJxcpqfGXw/exec";
+                                try {
+                                    const gasResponse = await fetch(gasUrl, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "text/plain" // CORSエラーを回避しやすいようにプレーンテキストで送信
+                                        },
+                                        body: JSON.stringify({
+                                            action: "saveAudio",
+                                            base64Data: base64DataOnly,
+                                            title: fileName
+                                        })
+                                    });
+                                    if (gasResponse.ok) {
+                                        console.log("GAS側での保存に成功");
+                                        messageEl.innerText = "ファイルを保存しました！文字起こしを開始します...";
+                                    } else {
+                                        console.error("GASサーバー側でエラーが発生しました");
+                                        messageEl.innerText = "ファイルの保存に失敗しました。";
+                                    }
+                                } catch (error) {
+                                    console.error("GASへの送信エラー:", error);
+                                    messageEl.innerText = "通信エラーが発生しました。";
+                                }
                                 document.getElementById("res-candidate-id").innerText = candidateId;
                                 document.getElementById("res-candidate-email").innerText = candidateEmail;
                                 pollForTranscription(currentRecordId, fileName);
