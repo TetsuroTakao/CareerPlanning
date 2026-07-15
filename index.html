@@ -246,6 +246,7 @@
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
                         const base64AudioWithPrefix = reader.result;
+                        const base64DataOnly = base64AudioWithPrefix.split(',')[1];
                         const appId = "4685a6dd-5910-4de7-a436-024d5a82245c";
                         const apiKey = "V2-ksToy-jx4wi-NkFlf-ZpAOj-sPzWh-pRPz4-indeA-sGcV6";
                         const tableName = "AudioRecords"; // ※スプレッドシートのタブ名（AppSheet上のテーブル名）
@@ -268,13 +269,13 @@
                                         {
                                             "ID": currentRecordId, 
                                             "タイトル": `面談録音_${candidateId}`, 
-                                            "音声ファイル": fileDataForAppSheet,
+                                            "音声ファイル": fileName,
                                             "日時": new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
                                             "インタビュー対象者ID": candidateId,
                                             "対象者メールアドレス": candidateEmail, 
                                             "ステータス": "選考中",
                                             "インタビュアーメールアドレス一覧": "tetsuro.takao@processtune.com, interviewer2@example.com",
-                                            "関係者メールアドレス一覧": "",
+                                            "関係者メールアドレス一覧": ""
                                         }
                                     ]
                                 })
