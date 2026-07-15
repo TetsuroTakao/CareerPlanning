@@ -294,9 +294,6 @@
                                 messageEl.innerText = "音声ファイルを送信中...";
                                 messageEl.style.color = "#0078d4"; // 処理中っぽい青色などに
                                 const gasUrl = "https://script.google.com/macros/s/AKfycbwZ89epDVn0UdJABmkZ-Bj09KpSUwGacz0KnvTAW-WSKNaaAVvZ2Lt0jyKGy9NjGNmdfA/exec";
-                            // for debug ##TODO delete
-                                alert("base64Dataは[" + base64DataOnly + "]");
-                            // end ##TODO delete
                                 try {
                                     const gasResponse = await fetch(gasUrl, {
                                         method: "POST",
@@ -317,6 +314,10 @@
                                         document.getElementById("res-candidate-email").innerText = candidateEmail;
                                         pollForTranscription(currentRecordId, fileName);
                                     } else {
+                            // for debug ##TODO delete
+                                        const result = await response.json();
+                                alert("gasResponse(" + gasResponse.ok + "): " + JSON.stringify(result));
+                            // end ##TODO delete
                                         console.error("GASサーバー側でエラーが発生しました");
                                         messageEl.innerText = "ファイルの保存に失敗しました。";
                                     }
