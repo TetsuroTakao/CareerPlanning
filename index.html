@@ -295,24 +295,25 @@
                                 messageEl.style.color = "#0078d4"; // 処理中っぽい青色などに
                                 const gasUrl = "https://script.google.com/macros/s/AKfycbwZ89epDVn0UdJABmkZ-Bj09KpSUwGacz0KnvTAW-WSKNaaAVvZ2Lt0jyKGy9NjGNmdfA/exec";
 
-                                const formData = new URLSearchParams();
-                                formData.append("action", "saveAudio");
-                                formData.append("base64Data", base64DataOnly);
-                                formData.append("title", fileName);
+                                // const formData = new URLSearchParams();
+                                // formData.append("action", "saveAudio");
+                                // formData.append("base64Data", base64DataOnly);
+                                // formData.append("title", fileName);
                                 try {
                                     const gasResponse = await fetch(gasUrl, {
                                         method: "POST",
                                         mode: "no-cors",
                                         headers: {
+                                            "Content-Type": "application/json"
                                             // "Content-Type": "text/plain"
-                                            "Content-Type": "application/x-www-form-urlencoded"
+                                            // "Content-Type": "application/x-www-form-urlencoded"
                                         },
-                                        body: formData
-                                        // body: JSON.stringify({
-                                        //     action: "saveAudio",
-                                        //     base64Data: base64DataOnly,
-                                        //     title: fileName
-                                        // })
+                                        // body: formData
+                                        body: JSON.stringify({
+                                            action: "saveAudio",
+                                            base64Data: base64DataOnly,
+                                            title: fileName
+                                        })
                                     });
                                     if (gasResponse.ok) {
                                         console.log("GAS側での保存に成功");
