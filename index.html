@@ -300,12 +300,12 @@
                                 // formData.append("base64Data", base64DataOnly);
                                 // formData.append("title", fileName);
                                 try {
-                                    const gasResponse = await fetch(gasUrl, {
+                                    const gasResponse = await UrlFetchApp(gasUrl, {
                                         method: "POST",
                                         mode: "cors",
                                         headers: {
-                                            // "Content-Type": "application/json"
-                                            "Content-Type": "text/plain"
+                                            "Content-Type": "application/json"
+                                            // "Content-Type": "text/plain"
                                             // "Content-Type": "application/x-www-form-urlencoded"
                                         },
                                         // body: formData
